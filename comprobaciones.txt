@@ -1,0 +1,119 @@
+===== Modo activo =====
+---- Resolving host address...
+---- IPv6 is not supported or configured
+---- 1 address found: 172.17.0.2
+---- Connecting to 172.17.0.2 (172.17.0.2) port 21
+<--- 220 (vsFTPd 3.0.5)
+---> FEAT
+<--- 211-Features:
+<---  EPRT
+<---  EPSV
+<---  MDTM
+<---  PASV
+<---  PBSZ
+<---  PROT
+<---  REST STREAM
+<---  SIZE
+<---  TVFS
+<--- 211 End
+---> AUTH TLS
+<--- 234 Proceed with negotiation.
+Loaded 121 CAs
+Loaded 0 CRLs
+---> USER despliegue
+WARNING: Certificate verification: The certificate is NOT trusted. The certificate issuer is unknown.  (78:0C:86:AC:69:F4:0D:9C:2C:D4:ED:B0:A6:5E:E6:E0:7C:D0:1E:3C)
+<--- 331 Please specify the password.
+---> PASS CAMBIAR_ESTO
+<--- 230 Login successful.
+---> PWD
+<--- 257 "/home/despliegue" is the current directory
+---> PBSZ 0
+<--- 200 PBSZ set to 0.
+---> PROT P
+<--- 200 PROT now Private.
+---- CWD path to be sent is `/srv/dpl/web'
+---> CWD /srv/dpl/web
+<--- 250 Directory successfully changed.
+---> PORT 172,17,0,3,175,149
+<--- 200 PORT command successful. Consider using PASV.
+---> LIST
+---- Accepted data connection from (172.17.0.2) port 20
+<--- 150 Here comes the directory listing.
+Loaded 121 CAs
+Loaded 0 CRLs
+WARNING: Certificate verification: The certificate is NOT trusted. The certificate issuer is unknown.  (78:0C:86:AC:69:F4:0D:9C:2C:D4:ED:B0:A6:5E:E6:E0:7C:D0:1E:3C)
+---- Got EOF on data connection
+---- Closing data socket
+<--- 226 Directory send OK.
+---> QUIT
+<--- 221 Goodbye.
+---- Closing control socket
+
+===== Modo pasivo =====
+---- Resolving host address...
+---- IPv6 is not supported or configured
+---- 1 address found: 172.17.0.2
+---- Connecting to 172.17.0.2 (172.17.0.2) port 21
+<--- 220 (vsFTPd 3.0.5)
+---> FEAT
+<--- 211-Features:
+<---  EPRT
+<---  EPSV
+<---  MDTM
+<---  PASV
+<---  PBSZ
+<---  PROT
+<---  REST STREAM
+<---  SIZE
+<---  TVFS
+<--- 211 End
+---> AUTH TLS
+<--- 234 Proceed with negotiation.
+Loaded 121 CAs
+Loaded 0 CRLs
+---> USER despliegue
+WARNING: Certificate verification: The certificate is NOT trusted. The certificate issuer is unknown.  (78:0C:86:AC:69:F4:0D:9C:2C:D4:ED:B0:A6:5E:E6:E0:7C:D0:1E:3C)
+<--- 331 Please specify the password.
+---> PASS CAMBIAR_ESTO
+<--- 230 Login successful.
+---> PWD
+<--- 257 "/home/despliegue" is the current directory
+---> PBSZ 0
+<--- 200 PBSZ set to 0.
+---> PROT P
+<--- 200 PROT now Private.
+---- CWD path to be sent is `/srv/dpl/web'
+---> CWD /srv/dpl/web
+<--- 250 Directory successfully changed.
+---> PASV
+<--- 227 Entering Passive Mode (172,17,0,2,40,34).
+---- Connecting data socket to (172.17.0.2) port 10274
+---- Data connection established
+---> LIST
+<--- 150 Here comes the directory listing.
+Loaded 121 CAs
+Loaded 0 CRLs
+WARNING: Certificate verification: The certificate is NOT trusted. The certificate issuer is unknown.  (78:0C:86:AC:69:F4:0D:9C:2C:D4:ED:B0:A6:5E:E6:E0:7C:D0:1E:3C)
+---- Got EOF on data connection
+---- Closing data socket
+drwxr-xr-x    3 1004     1005         4096 Nov 02 22:38 dist
+<--- 226 Directory send OK.
+---> QUIT
+gnutls_record_recv: The TLS connection was non-properly terminated. Assuming EOF.
+<--- 221 Goodbye.
+---- Closing control socket
+
+===== copia con sftp =====
+Connected to 172.17.0.2.
+
+===== Intento de acceso FTP con credenciales incorrectas =====
+
+ls: Fatal error: Certificate verification: The certificate is NOT trusted. The certificate issuer is unknown.  (78:0C:86:AC:69:F4:0D:9C:2C:D4:ED:B0:A6:5E:E6:E0:7C:D0:1E:3C)
+
+===== Intento de acceso por SSH =====
+
+despliegue@172.17.0.2: Permission denied (publickey).
+
+root@172.17.0.2: Permission denied (publickey).
+
+
