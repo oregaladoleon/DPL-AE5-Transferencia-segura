@@ -1,7 +1,7 @@
 # UT5 - Práctica evaluable, Aplicación Web con base de datos en contenedores.
 
 > Autor: Óscar Regalado León  
-> Fecha: Noviembre 2026 
+> Fecha: Noviembre 2026   
 > Autoría: imagen oficial de Ubuntu — https://hub.docker.com/_/ubuntu
 
 ## Objetivo
