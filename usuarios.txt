@@ -1,0 +1,6 @@
+===== usuarios =====
+lector:x:1003:1004::/home/lector:/bin/bash
+despliegue:x:1004:1005::/home/despliegue:/bin/bash
+===== groups =====
+despliegue : despliegue operaciones
+lector : lector operaciones
