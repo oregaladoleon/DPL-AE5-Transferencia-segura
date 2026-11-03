@@ -1,0 +1,130 @@
+# ==========================================
+# 1. PREPARACIÓN Y CONFIGURACIÓN DEL ENTORNO
+# ==========================================
+
+# Clonar el repositorio en el equipo anfitrión
+git clone git@github.com:oregaladoleon/DPL-AE5-Transferencia-segura.git AE5
+
+# Crear los ficheros de documentación y control del repositorio
+touch README.md comandos.txt usuarios.txt permisos.txt comprobaciones.txt .gitignore
+
+# Crear el grupo y los usuarios (despliegue y lector) en el servidor (dpl-lab)
+docker exec dpl-lab bash -c "
+groupadd operaciones
+useradd -m -s /bin/bash -G operaciones despliegue
+useradd -m -s /bin/bash -G operaciones lector
+echo 'despliegue:CAMBIAR_ESTO' | chpasswd
+echo 'lector:CAMBIAR_ESTO' | chpasswd
+"
+
+# Crear el directorio de despliegue, asignar propietario, grupo y permisos restrictivos (750)
+sudo docker exec dpl-lab bash -c "
+mkdir -p /srv/dpl/web &&
+chown despliegue:operaciones /srv/dpl/web &&
+chmod 750 /srv/dpl/web
+"
+
+
+# ==========================================
+# 2. PRUEBAS INICIALES DE TRANSFERENCIA FTP
+# ==========================================
+
+# Copiar los ficheros del build del frontend al contenedor cliente
+docker cp ~/dpl/ae4/frontend/dist dpl-cliente:/tmp/dist
+
+# Subir los ficheros mediante mirror -R con el usuario despliegue (aceptando certificado autofirmado)
+docker exec dpl-cliente lftp -u despliegue,CAMBIAR_ESTO 172.17.0.2 -e "set ssl:verify-certificate no; cd /srv/dpl/web; mirror -R /tmp/dist; ls; exit"
+
+# Descargar ficheros con el usuario lector
+docker exec dpl-cliente lftp -u lector,CAMBIAR_ESTO 172.17.0.2 -e "set ssl:verify-certificate no; cd /srv/dpl/web/dist; get index.html; ls; exit"
+
+
+# ==========================================
+# 3. COMPROBACIONES DE ACCESOS DENEGADOS
+# ==========================================
+
+# Comprobar denegación de escritura con el usuario lector
+docker exec dpl-cliente lftp -u lector,CAMBIAR_ESTO 172.17.0.2 -e "set ssl:verify-certificate no; cd /srv/dpl/web; put /tmp/dist/index.html; ls; exit"
+
+# Comprobar denegación de acceso con usuario anónimo
+sudo docker exec dpl-cliente lftp -u anonymous, 172.17.0.2 -e "ls; exit"
+
+
+# ==========================================
+# 4. COMPROBACIÓN DE MODOS ACTIVO Y PASIVO
+# ==========================================
+
+# Comprobación de acceso en Modo Activo (el servidor se conecta al cliente)
+docker exec dpl-cliente lftp -e "set ftp:passive-mode off; set ssl:verify-certificate no; open -u despliegue,CAMBIAR_ESTO 172.17.0.2; cd /srv/dpl/web; ls; exit"
+
+# Comprobación de acceso en Modo Pasivo (el cliente se conecta al servidor)
+docker exec dpl-cliente lftp -e "set ftp:passive-mode on; set ssl:verify-certificate no; open -u despliegue,CAMBIAR_ESTO 172.17.0.2; cd /srv/dpl/web; ls; exit"
+
+
+# ==========================================
+# 5. CONFIGURACIÓN DE FTPS EXPLÍCITO (TLS)
+# ==========================================
+
+# Instalar openssl en el servidor
+docker exec dpl-lab bash -c "apt-get install -y openssl"
+
+# Generar certificado autofirmado para vsftpd
+docker exec dpl-lab openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/vsftpd.key -out /etc/ssl/certs/vsftpd.crt -subj '/CN=dpl.local'
+
+# Iniciar/reiniciar el servicio vsftpd en el servidor
+docker exec dpl-lab service vsftpd start
+
+# Comprobar el estado y puerto del servicio FTP
+docker exec dpl-lab ss -tlnp | grep 21
+
+# Conexión de prueba con FTPS explícito forzado y depuración (-d)
+docker exec dpl-cliente lftp -d -u despliegue,CAMBIAR_ESTO 172.17.0.2 -e "set ftp:ssl-force true; set ssl:verify-certificate no; cd /srv/dpl/web; ls; exit"
+
+
+# ==========================================
+# 6. CONFIGURACIÓN DE SFTP Y AUTENTICACIÓN POR CLAVE
+# ==========================================
+
+# Generar par de claves SSH en el contenedor cliente
+docker exec dpl-cliente ssh-keygen -t ed25519 -N "" -f /root/.ssh/id_ed25519
+
+# Instalar y configurar openssh-server en el servidor (dpl-lab)
+docker exec dpl-lab bash -c "apt-get install -y openssh-server"
+docker exec dpl-lab bash -c "mkdir -p /run/sshd && ssh-keygen -A"
+docker exec dpl-lab sshd -t
+docker exec -d dpl-lab /usr/sbin/sshd -D
+
+# Limpiar huellas antiguas del host en el cliente y copiar la clave pública autorizada
+docker exec dpl-cliente ssh-keygen -f '/root/.ssh/known_hosts' -R '172.17.0.2'
+docker exec -it dpl-cliente ssh-copy-id -o StrictHostKeyChecking=accept-new despliegue@172.17.0.2
+
+# Probar acceso SSH sin contraseña y realizar copia con scp
+docker exec dpl-cliente ssh despliegue@172.17.0.2 "whoami"
+docker exec dpl-cliente scp /tmp/dist/index.html despliegue@172.17.0.2:/tmp/
+
+
+# ==========================================
+# 7. ENDURECIMIENTO (HARDENING) DE SSH
+# ==========================================
+
+# Aplicar directivas de seguridad en sshd_config (deshabilitar contraseña y login de root)
+docker exec dpl-lab bash -c "sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/; s/^#*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config"
+
+# Validar sintaxis y recargar configuración de SSH
+docker exec dpl-lab sshd -t
+docker exec dpl-lab pkill -HUP sshd
+
+# Comprobar que el acceso por contraseña y root son rechazados
+docker exec dpl-cliente ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password -o StrictHostKeyChecking=accept-new despliegue@172.17.0.2 true
+docker exec dpl-cliente ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new root@172.17.0.2 true
+
+
+# ==========================================
+# 8. EXPORTACIÓN DE CONFIGURACIONES
+# ==========================================
+
+# Copiar vsftpd.conf al directorio local del host
+docker cp dpl-lab:/etc/vsftpd.conf ./vsftpd.conf
+
+# Consultar directivas activas de sshd_config sin comentarios
+docker exec -it dpl-lab grep -v '^#' /etc/ssh/sshd_config | grep -v '^$'
