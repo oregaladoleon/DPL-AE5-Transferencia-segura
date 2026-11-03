@@ -1,0 +1,5 @@
+===== ls -ld /srv/dpl/web =====
+drwxr-x--- 3 despliegue operaciones 4096 Nov  2 22:38 /srv/dpl/web
+===== ls -l /srv/dpl/web =====
+total 4
+drwxr-xr-x 3 despliegue despliegue 4096 Nov  2 22:38 dist
