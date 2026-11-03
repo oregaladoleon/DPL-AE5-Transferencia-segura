@@ -2,6 +2,7 @@
 
 > Autor: Óscar Regalado León  
 > Fecha: Noviembre 2026 
+> Autoría: imagen oficial de Ubuntu — https://hub.docker.com/_/ubuntu
 
 ## Objetivo
 Construir un servicio de transferencia seguro y funcional en los contenedores del **dpl-lab** y **dpl-cliente**, demostrando la creación de usuarios, directorios y permisos, transferir ficheros en modo activo y pasivo, controlar los accesos permitidos y denegados y usar FTPS y SFTP con clave pública para que las credenciales no viajen en claro.
@@ -441,6 +442,204 @@ docker exec dpl-cliente ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new
 root@172.17.0.2: Permission denied (publickey).
 ~~~
 
+11. Exportamos la configuración aplicada (/etc/vsftpd.conf y las directivas relevantes de sshd_config)
+
+~~~bash
+docker cp dpl-lab:/etc/vsftpd.conf ./vsftpd.conf  
+~~~
+~~~bash
+docker exec -it dpl-lab cat /etc/ssh/sshd_config
+
+# This is the sshd server system-wide configuration file.  See
+# sshd_config(5) for more information.
+
+# This sshd was compiled with PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+
+# The strategy used for options in the default sshd_config shipped with
+# OpenSSH is to specify options with their default value where
+# possible, but leave them commented.  Uncommented options override the
+# default value.
+
+Include /etc/ssh/sshd_config.d/*.conf
+
+# When systemd socket activation is used (the default), the socket
+# configuration must be re-generated after changing Port, AddressFamily, or
+# ListenAddress.
+#
+# For changes to take effect, run:
+#
+#   systemctl daemon-reload
+#   systemctl restart ssh.socket
+#
+#Port 22
+#AddressFamily any
+#ListenAddress 0.0.0.0
+#ListenAddress ::
+
+#HostKey /etc/ssh/ssh_host_rsa_key
+#HostKey /etc/ssh/ssh_host_ecdsa_key
+#HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Ciphers and keying
+#RekeyLimit default none
+
+# Logging
+#SyslogFacility AUTH
+#LogLevel INFO
+
+# Authentication:
+
+#LoginGraceTime 2m
+PermitRootLogin no
+#StrictModes yes
+#MaxAuthTries 6
+#MaxSessions 10
+
+#PubkeyAuthentication yes
+
+# Expect .ssh/authorized_keys2 to be disregarded by default in future.
+#AuthorizedKeysFile	.ssh/authorized_keys .ssh/authorized_keys2
+
+#AuthorizedPrincipalsFile none
+
+#AuthorizedKeysCommand none
+#AuthorizedKeysCommandUser nobody
+
+# For this to work you will also need host keys in /etc/ssh/ssh_known_hosts
+#HostbasedAuthentication no
+# Change to yes if you don't trust ~/.ssh/known_hosts for
+# HostbasedAuthentication
+#IgnoreUserKnownHosts no
+# Don't read the user's ~/.rhosts and ~/.shosts files
+#IgnoreRhosts yes
+
+# To disable tunneled clear text passwords, change to no here!
+PasswordAuthentication no
+#PermitEmptyPasswords no
+
+# Change to yes to enable challenge-response passwords (beware issues with
+# some PAM modules and threads)
+KbdInteractiveAuthentication no
+
+# Kerberos options
+#KerberosAuthentication no
+#KerberosOrLocalPasswd yes
+#KerberosTicketCleanup yes
+#KerberosGetAFSToken no
+
+# GSSAPI options
+#GSSAPIAuthentication no
+#GSSAPICleanupCredentials yes
+#GSSAPIStrictAcceptorCheck yes
+#GSSAPIKeyExchange no
+
+# Set this to 'yes' to enable PAM authentication, account processing,
+# and session processing. If this is enabled, PAM authentication will
+# be allowed through the KbdInteractiveAuthentication and
+# PasswordAuthentication.  Depending on your PAM configuration,
+# PAM authentication via KbdInteractiveAuthentication may bypass
+# the setting of "PermitRootLogin prohibit-password".
+# If you just want the PAM account and session checks to run without
+# PAM authentication, then enable this but set PasswordAuthentication
+# and KbdInteractiveAuthentication to 'no'.
+UsePAM yes
+
+#AllowAgentForwarding yes
+#AllowTcpForwarding yes
+#GatewayPorts no
+X11Forwarding yes
+#X11DisplayOffset 10
+#X11UseLocalhost yes
+#PermitTTY yes
+PrintMotd no
+#PrintLastLog yes
+#TCPKeepAlive yes
+#PermitUserEnvironment no
+#Compression delayed
+#ClientAliveInterval 0
+#ClientAliveCountMax 3
+#UseDNS no
+#PidFile /run/sshd.pid
+#MaxStartups 10:30:100
+#PermitTunnel no
+#ChrootDirectory none
+#VersionAddendum none
+
+# no default banner path
+#Banner none
+
+# Allow client to pass locale environment variables
+AcceptEnv LANG LC_*
+
+# override default of no subsystems
+Subsystem	sftp	/usr/lib/openssh/sftp-server
+
+# Example of overriding settings on a per-user basis
+#Match User anoncvs
+#	X11Forwarding no
+#	AllowTcpForwarding no
+#	PermitTTY no
+#	ForceCommand cvs server
+~~~
+
+Para ver sólo las directivas activas:
+
+~~~bash
+docker exec -it dpl-lab grep -v '^#' /etc/ssh/sshd_config | grep -v '^$'
+
+Include /etc/ssh/sshd_config.d/*.conf
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+UsePAM yes
+X11Forwarding yes
+PrintMotd no
+AcceptEnv LANG LC_*
+Subsystem	sftp	/usr/lib/openssh/sftp-server
+~~~
+
+## Comprobación
+
+Guardamos las salidas de los siguientes comandos en **usuarios.txt**:
+
+~~~bash
+docker exec dpl-lab grep -E 'despliegue|lector' /etc/passwd
+
+docker exec dpl-lab groups despliegue lector
+~~~
+
+Guardamos las salidas de los siguientes comandos en **permisos.txt**
+
+~~~bash
+docker exec dpl-lab ls -ld /srv/dpl/web
+
+docker exec dpl-lab ls -l /srv/dpl/web
+~~~
+
+Guardamos las salidas de los siguientes comandos en **comprobaciones.txt**
+
+~~~bash
+# Modo activo
+sudo docker exec dpl-cliente lftp -d -u despliegue,CAMBIAR_ESTO 172.17.0.2 -e "set ftp:passive-mode off; set ftp:ssl-force true; set ssl:verify-certificate no; cd /srv/dpl/web; ls; exit"
+
+# Modo pasivo
+sudo docker exec dpl-cliente lftp -d -u despliegue,CAMBIAR_ESTO 172.17.0.2 -e "set ftp:passive-mode on; set ftp:ssl-force true; set ssl:verify-certificate no; cd /srv/dpl/web; ls; exit"
+
+# Copia con scp
+sudo docker exec dpl-cliente scp /tmp/dist/index.html despliegue@172.17.0.2:/tmp/
+
+# Copia con sftp
+sudo docker exec dpl-cliente sftp -o StrictHostKeyChecking=accept-new despliegue@172.17.0.2
+
+# Intento de acceso FTP con credenciales incorrectas
+sudo docker exec dpl-cliente lftp -u usuario_falso,password_falso 172.17.0.2 -e "ls; exit"
+
+# Intento de accceso por SSH
+docker exec dpl-cliente ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password -o StrictHostKeyChecking=accept-new despliegue@172.17.0.2 true
+
+docker exec dpl-cliente ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new root@172.17.0.2 true
+~~~
+
 ## Problemas encontrados
 
 ### Problema 1
@@ -599,3 +798,4 @@ Number of key(s) added: 1
 Now try logging into the machine, with:   "ssh -o 'StrictHostKeyChecking=accept-new' 'despliegue@172.17.0.2'"
 and check to make sure that only the key(s) you wanted were added.
 ~~~
+
